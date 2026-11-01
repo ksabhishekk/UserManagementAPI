@@ -53,21 +53,22 @@ app.MapPost("/users", (CreateUserRequest request) =>
 
 app.MapPut("/users/{id:int}", Results<Ok<User>, NotFound> (int id, UpdateUserRequest request) =>
 {
-    if (!users.TryGetValue(id, out var existingUser))
+    while (users.TryGetValue(id, out var existingUser))
     {
-        return TypedResults.NotFound();
+        var updatedUser = existingUser with
+        {
+            Name = request.Name,
+            Email = request.Email,
+            Department = request.Department
+        };
+
+        if (users.TryUpdate(id, updatedUser, existingUser))
+        {
+            return TypedResults.Ok(updatedUser);
+        }
     }
 
-    var updatedUser = existingUser with
-    {
-        Name = request.Name,
-        Email = request.Email,
-        Department = request.Department
-    };
-
-    return users.TryUpdate(id, updatedUser, existingUser)
-        ? TypedResults.Ok(updatedUser)
-        : TypedResults.NotFound();
+    return TypedResults.NotFound();
 })
     .WithName("UpdateUser")
     .WithSummary("Update a user")
