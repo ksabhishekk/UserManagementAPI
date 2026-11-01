@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Middleware Verification Results</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #101827;
+      color: #e5edf7;
+    }
+
+    body {
+      margin: 0;
+      padding: 48px;
+    }
+
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 36px;
+      border: 1px solid #2d3b50;
+      border-radius: 16px;
+      background: #172235;
+    }
+
+    h1 { margin-top: 0; }
+    p { color: #aab9cc; }
+    .passed { color: #62d99b; font-weight: 700; }
+
+    table {
+      width: 100%;
+      margin-top: 28px;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 14px 12px;
+      border-bottom: 1px solid #2d3b50;
+      text-align: left;
+    }
+
+    th { color: #aab9cc; }
+    code { color: #a9c7ff; }
+    footer { margin-top: 28px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Middleware verification</h1>
+    <p>ASP.NET Core User Management API · Local HTTP smoke checks</p>
+    <p class="passed">All recorded checks passed</p>
+    <table>
+      <thead>
+        <tr><th>Check</th><th>Expected</th><th>Result</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Request without bearer token</td><td>401 + Bearer challenge</td><td class="passed">PASS</td></tr>
+        <tr><td>GET users with valid bearer token</td><td>200</td><td class="passed">PASS</td></tr>
+        <tr><td>Create user with valid token</td><td>201 Created</td><td class="passed">PASS</td></tr>
+        <tr><td>Invalid create payload</td><td>400 validation response</td><td class="passed">PASS</td></tr>
+        <tr><td>Development OpenAPI with valid token</td><td>200</td><td class="passed">PASS</td></tr>
+        <tr><td>Request logging</td><td>Method, path, status logged</td><td class="passed">PASS</td></tr>
+        <tr><td>Build</td><td>Zero warnings, zero errors</td><td class="passed">PASS</td></tr>
+      </tbody>
+    </table>
+    <footer>Test token was supplied locally and is not included in this report or repository.</footer>
+  </main>
+</body>
+</html>

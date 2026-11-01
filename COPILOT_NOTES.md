@@ -27,3 +27,10 @@
 - **Suggested:** Check how malformed JSON and normal in-memory operations fail.
 - **Before:** No custom exception handling was present.
 - **After:** No handler-level exception path requiring a code change was found; malformed JSON is rejected by ASP.NET Core request binding with HTTP 400. No custom catch block was added.
+
+## Phase 3 middleware and peer-review preparation
+
+- **Asked:** "Create ErrorHandlingMiddleware, TokenAuthMiddleware, and RequestLoggingMiddleware; register them in the specified order; add a README, request examples, notes, test screenshots, and push the changes."
+- **Suggested:** Add centralized exception responses and logging, bearer-token authentication, and request/response-status logging.
+- **Before:** The API routes were unauthenticated and there was no middleware, run guide, or local token setup.
+- **After:** Added the three middleware classes and registered them in the requested order. The API requires a configured `Auth:Token`, compares bearer tokens in constant time, and fails startup when the token is not configured. Added local setup and endpoint documentation in `README.md`; updated `.http` examples with authorization headers and an unauthenticated request. Added a verification report and screenshot in `docs/`. No token is committed to the public repository.

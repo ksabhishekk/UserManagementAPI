@@ -1,15 +1,19 @@
 @UserManagementAPI_HostAddress = http://localhost:5290
+@token = replace-with-the-value-of-Auth__Token
 
 ### Get all users
 GET {{UserManagementAPI_HostAddress}}/users
+Authorization: Bearer {{token}}
 Accept: application/json
 
 ### Get a user by ID
 GET {{UserManagementAPI_HostAddress}}/users/1
+Authorization: Bearer {{token}}
 Accept: application/json
 
 ### Create a user
 POST {{UserManagementAPI_HostAddress}}/users
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -20,6 +24,7 @@ Content-Type: application/json
 
 ### Invalid user payload (expected 400 validation problem)
 POST {{UserManagementAPI_HostAddress}}/users
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -30,6 +35,7 @@ Content-Type: application/json
 
 ### Update a user
 PUT {{UserManagementAPI_HostAddress}}/users/1
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -40,7 +46,13 @@ Content-Type: application/json
 
 ### Delete a user
 DELETE {{UserManagementAPI_HostAddress}}/users/1
+Authorization: Bearer {{token}}
 
 ### Get a user that does not exist
 GET {{UserManagementAPI_HostAddress}}/users/999
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Request without a token (expected 401)
+GET {{UserManagementAPI_HostAddress}}/users
 Accept: application/json

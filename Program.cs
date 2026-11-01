@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http.HttpResults;
+using UserManagementAPI.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,12 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+if (string.IsNullOrWhiteSpace(app.Configuration["Auth:Token"]))
+{
+    throw new InvalidOperationException(
+        "Auth:Token must be configured using the Auth__Token environment variable.");
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -17,6 +24,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<ErrorHandlingMiddleware>();
+app.UseMiddleware<TokenAuthMiddleware>();
+app.UseMiddleware<RequestLoggingMiddleware>();
 
 var users = new ConcurrentDictionary<int, User>();
 var nextUserId = 0;
