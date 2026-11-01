@@ -18,6 +18,16 @@ Content-Type: application/json
   "department": "Engineering"
 }
 
+### Invalid user payload (expected 400 validation problem)
+POST {{UserManagementAPI_HostAddress}}/users
+Content-Type: application/json
+
+{
+  "name": "",
+  "email": "not-an-email",
+  "department": ""
+}
+
 ### Update a user
 PUT {{UserManagementAPI_HostAddress}}/users/1
 Content-Type: application/json

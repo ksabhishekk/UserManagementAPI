@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -49,7 +50,9 @@ app.MapPost("/users", (CreateUserRequest request) =>
     .WithName("CreateUser")
     .WithSummary("Create a user")
     .WithDescription("Creates a user and returns its URL in the Location header.")
-    .Produces<User>(StatusCodes.Status201Created);
+    .Produces<User>(StatusCodes.Status201Created)
+    .ProducesValidationProblem()
+    .AddEndpointFilter(ValidationHelper.ValidateAsync);
 
 app.MapPut("/users/{id:int}", Results<Ok<User>, NotFound> (int id, UpdateUserRequest request) =>
 {
@@ -74,7 +77,9 @@ app.MapPut("/users/{id:int}", Results<Ok<User>, NotFound> (int id, UpdateUserReq
     .WithSummary("Update a user")
     .WithDescription("Replaces the name, email, and department for the specified user.")
     .Produces<User>(StatusCodes.Status200OK)
-    .Produces(StatusCodes.Status404NotFound);
+    .Produces(StatusCodes.Status404NotFound)
+    .ProducesValidationProblem()
+    .AddEndpointFilter(ValidationHelper.ValidateAsync);
 
 app.MapDelete("/users/{id:int}", Results<NoContent, NotFound> (int id) =>
     users.TryRemove(id, out _)
@@ -114,6 +119,70 @@ record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 
 sealed record User(int Id, string Name, string Email, string Department);
 
-sealed record CreateUserRequest(string Name, string Email, string Department);
+/// <summary>Validated input for creating a user.</summary>
+sealed record CreateUserRequest
+{
+    [Required, StringLength(100)]
+    public required string Name { get; init; }
 
-sealed record UpdateUserRequest(string Name, string Email, string Department);
+    [Required, StringLength(254), EmailAddress]
+    public required string Email { get; init; }
+
+    [Required, StringLength(100)]
+    public required string Department { get; init; }
+}
+
+/// <summary>Validated input for updating a user.</summary>
+sealed record UpdateUserRequest
+{
+    [Required, StringLength(100)]
+    public required string Name { get; init; }
+
+    [Required, StringLength(254), EmailAddress]
+    public required string Email { get; init; }
+
+    [Required, StringLength(100)]
+    public required string Department { get; init; }
+}
+
+static class ValidationHelper
+{
+    public static async ValueTask<object?> ValidateAsync(
+        EndpointFilterInvocationContext context,
+        EndpointFilterDelegate next)
+    {
+        foreach (var argument in context.Arguments)
+        {
+            if (argument is null)
+            {
+                continue;
+            }
+
+            var validationResults = new List<ValidationResult>();
+            var validationContext = new ValidationContext(argument);
+
+            if (!Validator.TryValidateObject(
+                    argument,
+                    validationContext,
+                    validationResults,
+                    validateAllProperties: true))
+            {
+                var errors = validationResults
+                    .SelectMany(result => result.MemberNames.DefaultIfEmpty(string.Empty),
+                        (result, memberName) => new
+                        {
+                            MemberName = memberName,
+                            ErrorMessage = result.ErrorMessage ?? "The value is invalid."
+                        })
+                    .GroupBy(error => error.MemberName)
+                    .ToDictionary(
+                        group => group.Key,
+                        group => group.Select(error => error.ErrorMessage).ToArray());
+
+                return TypedResults.ValidationProblem(errors);
+            }
+        }
+
+        return await next(context);
+    }
+}
