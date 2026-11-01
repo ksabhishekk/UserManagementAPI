@@ -1,41 +1,26 @@
-var builder = WebApplication.CreateBuilder(args);
+var users = new Dictionary<int, User>();
+var nextId = 1;
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+app.MapGet("/users", () => users.Values);
 
-var app = builder.Build();
+app.MapGet("/users/{id:int}", (int id) =>
+    users.TryGetValue(id, out var u) ? Results.Ok(u) : Results.NotFound());
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+app.MapPost("/users", (User user) =>
 {
-    app.MapOpenApi();
-}
+    var created = user with { Id = nextId++ };
+    users[created.Id] = created;
+    return Results.Created($"/users/{created.Id}", created);
+});
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
+app.MapPut("/users/{id:int}", (int id, User user) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    if (!users.ContainsKey(id)) return Results.NotFound();
+    users[id] = user with { Id = id };
+    return Results.NoContent();
+});
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapDelete("/users/{id:int}", (int id) =>
+    users.Remove(id) ? Results.NoContent() : Results.NotFound());
 
-app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+public record User(int Id, string Name, string Email, string Department);
