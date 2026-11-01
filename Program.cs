@@ -20,10 +20,10 @@ app.UseHttpsRedirection();
 var users = new ConcurrentDictionary<int, User>();
 var nextUserId = 0;
 
-app.MapGet("/users", () => TypedResults.Ok(users.Values.OrderBy(user => user.Id).ToArray()))
+app.MapGet("/users", () => TypedResults.Ok(users.Values.ToArray()))
     .WithName("GetUsers")
     .WithSummary("Get all users")
-    .WithDescription("Returns all users, ordered by ID.")
+    .WithDescription("Returns all users.")
     .Produces<User[]>(StatusCodes.Status200OK);
 
 app.MapGet("/users/{id:int}", Results<Ok<User>, NotFound> (int id) =>
