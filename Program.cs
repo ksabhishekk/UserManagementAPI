@@ -1,26 +1,118 @@
-var users = new Dictionary<int, User>();
-var nextId = 1;
+using System.Collections.Concurrent;
+using Microsoft.AspNetCore.Http.HttpResults;
 
-app.MapGet("/users", () => users.Values);
+var builder = WebApplication.CreateBuilder(args);
 
-app.MapGet("/users/{id:int}", (int id) =>
-    users.TryGetValue(id, out var u) ? Results.Ok(u) : Results.NotFound());
+// Add services to the container.
+// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Services.AddOpenApi();
 
-app.MapPost("/users", (User user) =>
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
 {
-    var created = user with { Id = nextId++ };
-    users[created.Id] = created;
-    return Results.Created($"/users/{created.Id}", created);
-});
+    app.MapOpenApi();
+}
 
-app.MapPut("/users/{id:int}", (int id, User user) =>
+app.UseHttpsRedirection();
+
+var users = new ConcurrentDictionary<int, User>();
+var nextUserId = 0;
+
+app.MapGet("/users", () => TypedResults.Ok(users.Values.OrderBy(user => user.Id).ToArray()))
+    .WithName("GetUsers")
+    .WithSummary("Get all users")
+    .WithDescription("Returns all users, ordered by ID.")
+    .Produces<User[]>(StatusCodes.Status200OK);
+
+app.MapGet("/users/{id:int}", Results<Ok<User>, NotFound> (int id) =>
 {
-    if (!users.ContainsKey(id)) return Results.NotFound();
-    users[id] = user with { Id = id };
-    return Results.NoContent();
-});
+    return users.TryGetValue(id, out var user)
+        ? TypedResults.Ok(user)
+        : TypedResults.NotFound();
+})
+    .WithName("GetUserById")
+    .WithSummary("Get a user by ID")
+    .WithDescription("Returns the user with the specified ID.")
+    .Produces<User>(StatusCodes.Status200OK)
+    .Produces(StatusCodes.Status404NotFound);
 
-app.MapDelete("/users/{id:int}", (int id) =>
-    users.Remove(id) ? Results.NoContent() : Results.NotFound());
+app.MapPost("/users", (CreateUserRequest request) =>
+{
+    var id = Interlocked.Increment(ref nextUserId);
+    var user = new User(id, request.Name, request.Email, request.Department);
+    users[id] = user;
 
-public record User(int Id, string Name, string Email, string Department);
+    return TypedResults.Created($"/users/{id}", user);
+})
+    .WithName("CreateUser")
+    .WithSummary("Create a user")
+    .WithDescription("Creates a user and returns its URL in the Location header.")
+    .Produces<User>(StatusCodes.Status201Created);
+
+app.MapPut("/users/{id:int}", Results<Ok<User>, NotFound> (int id, UpdateUserRequest request) =>
+{
+    if (!users.TryGetValue(id, out var existingUser))
+    {
+        return TypedResults.NotFound();
+    }
+
+    var updatedUser = existingUser with
+    {
+        Name = request.Name,
+        Email = request.Email,
+        Department = request.Department
+    };
+
+    return users.TryUpdate(id, updatedUser, existingUser)
+        ? TypedResults.Ok(updatedUser)
+        : TypedResults.NotFound();
+})
+    .WithName("UpdateUser")
+    .WithSummary("Update a user")
+    .WithDescription("Replaces the name, email, and department for the specified user.")
+    .Produces<User>(StatusCodes.Status200OK)
+    .Produces(StatusCodes.Status404NotFound);
+
+app.MapDelete("/users/{id:int}", Results<NoContent, NotFound> (int id) =>
+    users.TryRemove(id, out _)
+        ? TypedResults.NoContent()
+        : TypedResults.NotFound())
+    .WithName("DeleteUser")
+    .WithSummary("Delete a user")
+    .WithDescription("Deletes the user with the specified ID.")
+    .Produces(StatusCodes.Status204NoContent)
+    .Produces(StatusCodes.Status404NotFound);
+
+var summaries = new[]
+{
+    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+};
+
+app.MapGet("/weatherforecast", () =>
+{
+    var forecast =  Enumerable.Range(1, 5).Select(index =>
+        new WeatherForecast
+        (
+            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+            Random.Shared.Next(-20, 55),
+            summaries[Random.Shared.Next(summaries.Length)]
+        ))
+        .ToArray();
+    return forecast;
+})
+.WithName("GetWeatherForecast");
+
+app.Run();
+
+record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+{
+    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+}
+
+sealed record User(int Id, string Name, string Email, string Department);
+
+sealed record CreateUserRequest(string Name, string Email, string Department);
+
+sealed record UpdateUserRequest(string Name, string Email, string Department);
